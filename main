@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Land Measure Pro</title>
+    <meta name="theme-color" content="#0a0c0a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <style>
+        /* === THEME VARIABLES === */
+        :root {
+            --bg-color: #0a0c0a;
+            --surface-color: #141815;
+            --surface-color-light: #1e241f;
+            --primary: #00e676;
+            --primary-dark: #00b25c;
+            --primary-alpha: rgba(0, 230, 118, 0.15);
+            --text-main: #ffffff;
+            --text-muted: #9eaba3;
+            --border: #2a332d;
+            --error: #ff5252;
+            --radius: 16px;
+            --font-main: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Light Mode Overrides */
+        body.light-mode {
+            --bg-color: #f2f5f3;
+            --surface-color: #ffffff;
+            --surface-color-light: #e8ece9;
+            --primary: #00c853;
+            --primary-dark: #009624;
+            --primary-alpha: rgba(0, 200, 83, 0.1);
+            --text-main: #1a1f1c;
+            --text-muted: #5e6b63;
+            --border: #d0d6d2;
+        }
+
+        /* === RESET & BASE === */
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
+        body { font-family: var(--font-main); background-color: var(--bg-color); color: var(--text-main); line-height: 1.5; transition: background-color var(--transition), color var(--transition); overflow-x: hidden; }
+        input, button, select, textarea { font-family: inherit; user-select: auto; }
+        
+        /* === LAYOUT === */
+        .app-container { display: flex; flex-direction: column; min-height: 100vh; max-width: 600px; margin: 0 auto; background: var(--bg-color); box-shadow: 0 0 20px rgba(0,0,0,0.5); position: relative; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 20px; background: var(--surface-color); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+        .header h1 { font-size: 20px; font-weight: 700; color: var(--primary); letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px; }
+        .header h1 svg { fill: var(--primary); width: 24px; height: 24px; }
+        .icon-btn { background: none; border: none; color: var(--text-main); cursor: pointer; padding: 8px; border-radius: 50%; transition: var(--transition); display: flex; align-items: center; justify-content: center; }
+        .icon-btn:hover { background: var(--surface-color-light); color: var(--primary); }
+        .icon-btn svg { width: 24px; height: 24px; fill: currentColor; }
+
+        /* === NAVIGATION === */
+        .nav-scroll { overflow-x: auto; white-space: nowrap; padding: 12px 20px; background: var(--bg-color); border-bottom: 1px solid var(--border); scrollbar-width: none; }
+        .nav-scroll::-webkit-scrollbar { display: none; }
+        .nav-pill { display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; margin-right: 10px; border-radius: 30px; background: var(--surface-color); color: var(--text-muted); font-weight: 600; font-size: 14px; cursor: pointer; transition: var(--transition); border: 1px solid var(--border); }
+        .nav-pill.active { background: var(--primary-alpha); color: var(--primary); border-color: var(--primary); }
+        .nav-pill svg { width: 18px; height: 18px; fill: currentColor; }
+
+        /* === MAIN CONTENT === */
+        .main-content { flex: 1; padding: 20px; padding-bottom: 100px; /* Space for FAB */ }
+        .module { display: none; animation: fadeIn 0.4s ease; }
+        .module.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* === CARDS & INPUTS === */
+        .card { background: var(--surface-color); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; border: 1px solid var(--border); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .card-title { font-size: 16px; font-weight: 600; color: var(--primary); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+        
+        .input-row { display: flex; gap: 12px; margin-bottom: 16px; align-items: flex-end; }
+        .input-group { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+        .input-group label { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+        
+        .input-wrapper { position: relative; display: flex; align-items: center; }
+        .input-wrapper span { position: absolute; right: 12px; color: var(--text-muted); font-size: 14px; pointer-events: none; }
+        input[type="number"] { width: 100%; background: var(--surface-color-light); border: 1px solid var(--border); color: var(--text-main); font-size: 18px; font-weight: 600; padding: 14px 40px 14px 14px; border-radius: 10px; transition: var(--transition); outline: none; appearance: textfield; }
+        input[type="number"]:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-alpha); }
+        input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        
+        .toggle-group { display: flex; background: var(--surface-color-light); border-radius: 10px; overflow: hidden; margin-bottom: 16px; border: 1px solid var(--border); }
+        .toggle-btn { flex: 1; padding: 12px; text-align: center; font-size: 14px; font-weight: 600; color: var(--text-muted); cursor: pointer; transition: var(--transition); }
+        .toggle-btn.active { background: var(--primary-alpha); color: var(--primary); }
+
+        /* === RESULTS === */
+        .result-card { background: linear-gradient(145deg, var(--surface-color), var(--surface-color-light)); border: 2px solid var(--primary-dark); position: relative; overflow: hidden; }
+        .result-card::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle, var(--primary-alpha) 0%, transparent 70%); opacity: 0.5; pointer-events: none; }
+        .result-main { text-align: center; margin-bottom: 20px; }
+        .result-main h2 { font-size: 32px; font-weight: 800; color: var(--primary); line-height: 1.2; word-break: break-word; }
+        .result-main p { font-size: 14px; color: var(--text-muted); }
+        
+        .result-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .result-item { background: var(--bg-color); padding: 12px; border-radius: 10px; border: 1px solid var(--border); display: flex; flex-direction: column; }
+        .result-item span.label { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+        .result-item span.val { font-size: 16px; font-weight: 700; color: var(--text-main); }
+        
+        .action-row { display: flex; gap: 10px; margin-top: 16px; }
+        .btn { flex: 1; padding: 12px; border-radius: 10px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: var(--transition); display: flex; justify-content: center; align-items: center; gap: 8px; }
+        .btn-primary { background: var(--primary); color: #000; }
+        .btn-primary:active { transform: scale(0.96); background: var(--primary-dark); }
+        .btn-outline { background: transparent; color: var(--primary); border: 1px solid var(--primary); }
+        .btn-outline:active { background: var(--primary-alpha); }
+
+        /* === CONVERTER === */
+        .conv-select { width: 100%; background: var(--surface-color-light); border: 1px solid var(--border); color: var(--text-main); font-size: 16px; padding: 14px; border-radius: 10px; margin-bottom: 12px; outline: none; appearance: none; }
+        
+        /* === FOOTER & CREDITS === */
+        .dev-footer { padding: 30px 20px; text-align: center; background: var(--surface-color); border-top: 1px solid var(--border); margin-top: auto; }
+        .dev-footer p { color: var(--text-muted); font-size: 14px; margin-bottom: 8px; }
+        .dev-footer .highlight { color: var(--primary); font-weight: bold; letter-spacing: 1px; }
+        .upi-box { display: inline-flex; align-items: center; gap: 8px; background: var(--surface-color-light); padding: 8px 16px; border-radius: 20px; border: 1px dashed var(--primary); color: var(--text-main); font-weight: 600; cursor: pointer; transition: var(--transition); margin-top: 5px; }
+        .upi-box:active { background: var(--primary-alpha); }
+        .upi-box svg { width: 16px; height: 16px; fill: var(--primary); }
+
+        /* === TOAST / MESSAGES === */
+        .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px); background: rgba(0,230,118,0.9); color: #000; padding: 12px 24px; border-radius: 30px; font-weight: 600; font-size: 14px; opacity: 0; pointer-events: none; transition: var(--transition); z-index: 1000; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        /* === FLOATING TOOLS === */
+        .fab-container { position: fixed; bottom: 20px; right: 20px; z-index: 90; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
+        .fab { width: 56px; height: 56px; border-radius: 50%; background: var(--primary); color: #000; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 10px rgba(0,230,118,0.4); cursor: pointer; transition: var(--transition); border: none; }
+        .fab:active { transform: scale(0.9); }
+        .fab svg { width: 28px; height: 28px; fill: currentColor; }
+        .fab-menu { display: flex; flex-direction: column; gap: 10px; opacity: 0; pointer-events: none; transform: translateY(20px); transition: var(--transition); }
+        .fab-container:focus-within .fab-menu, .fab-container:hover .fab-menu { opacity: 1; pointer-events: auto; transform: translateY(0); }
+        .fab-sub { width: 48px; height: 48px; border-radius: 50%; background: var(--surface-color-light); border: 1px solid var(--border); color: var(--text-main); display: flex; justify-content: center; align-items: center; cursor: pointer; transition: var(--transition); }
+        .fab-sub:hover { background: var(--primary-alpha); color: var(--primary); }
+        .fab-sub svg { width: 20px; height: 20px; fill: currentColor; }
+
+        /* === MODALS (Settings/History) === */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(4px); z-index: 200; display: flex; justify-content: center; align-items: flex-end; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-content { background: var(--surface-color); width: 100%; max-width: 600px; max-height: 80vh; border-radius: 24px 24px 0 0; padding: 24px; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1); overflow-y: auto; }
+        .modal-overlay.active .modal-content { transform: translateY(0); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-header h2 { font-size: 20px; color: var(--primary); }
+        .history-item { padding: 12px; border-bottom: 1px solid var(--border); }
+        .history-item:last-child { border-bottom: none; }
+        .history-title { font-weight: 600; color: var(--text-main); }
+        .history-detail { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+        
+        /* Print Styles */
+        @media print {
+            .header, .nav-scroll, .fab-container, .dev-footer, .btn, .modal-overlay { display: none !important; }
+            body, .app-container { background: #fff !important; color: #000 !important; box-shadow: none; max-width: 100%; margin: 0; padding: 0; }
+            .card { border: 1px solid #ccc !important; box-shadow: none !important; background: #fff !important; margin-bottom: 10px; page-break-inside: avoid; }
+            .result-card { border: 2px solid #000 !important; }
+            input { border: 1px solid #999 !important; background: #fff !important; color: #000 !important; }
+            .result-item span.val, .result-main h2 { color: #000 !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    
+    <!-- HEADER -->
+    <header class="header">
+        <h1 data-i18n="app_title">
+            <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round"/></svg>
+            Land Measure Pro
+        </h1>
+        <button class="icon-btn" onclick="openSettings()">
+            <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
+        </button>
+    </header>
+
+    <!-- NAVIGATION -->
+    <nav class="nav-scroll">
+        <div class="nav-pill active" onclick="switchModule('rect', this)">
+            <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2" stroke="currentColor" stroke-width="2" fill="none"/></svg> <span data-i18n="nav_rect">Rectangle</span>
+        </div>
+        <div class="nav-pill" onclick="switchModule('tri', this)">
+            <svg viewBox="0 0 24 24"><path d="M12 3L2 20h20L12 3z" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round"/></svg> <span data-i18n="nav_tri">Triangle</span>
+        </div>
+        <div class="nav-pill" onclick="switchModule('circ', this)">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" fill="none"/></svg> <span data-i18n="nav_circ">Circle</span>
+        </div>
+        <div class="nav-pill" onclick="switchModule('seg', this)">
+            <svg viewBox="0 0 24 24"><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M2 12h20" stroke="currentColor" stroke-width="2"/></svg> <span data-i18n="nav_seg">Segment</span>
+        </div>
+        <div class="nav-pill" onclick="switchModule('conv', this)">
+            <svg viewBox="0 0 24 24"><path d="M8 7h12m0 0l-4-4m4 4l-4 4m4 6H4m0 0l4 4m-4-4l4-4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg> <span data-i18n="nav_conv">Converter</span>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+        
+        <!-- MODULE 1: RECTANGLE -->
+        <div id="mod-rect" class="module active">
+            <div class="card">
+                <div class="card-title"><span data-i18n="side_length">Lengths (Opposite Sides)</span></div>
+                <div class="input-row">
+                    <div class="input-group">
+                        <label data-i18n="d1">Side D1</label>
+                        <div class="input-wrapper"><input type="number" inputmode="decimal" id="r_d1_ft" class="ft-input" data-next="r_d1_in" placeholder="0"><span>ft</span></div>
+                        <div class="input-wrapper"><input type="number" inputmode="decimal" id="r_d1_in" class="in-input" data-prev="r_d1_ft" placeholder="0"><span>in</span></div>
+                    </div>
+                    <div class="input-group">
+                        <label data-i18n="d2">Side D2</label>
+                        <div class="input-wrapper"><input type="number" inputmode="decimal" id="r_d2_ft" class="ft-input" data-next="r_d2_in" placeholder="0"><span>ft</span></div>
+                        <div class="input-wrapper"><input type="number" inputmode="decimal" id="r_d2_in" class="in-input" data-prev="r_d2_ft" placeholder="0"><span>in</span></div>
+                    </div>
+                </div>
+                <div class="card-title" style="margin-top:20px;"><span data-i18n="side_width">Widths (Opposite Sides)</span></div>
+                <div class="input-row">
+                    <div class="input-group">
+                        <label data-i18n="p1">Side P1</label>
+                        <div class="input-wrapper"><input type="number" inputmode="decimal" id="r_p1_ft" class="ft-input" data-next="r_p1_in" placeholder="0"><span>ft</span></div>
+                        <div class="input-wrapper"><input type="number" inputmode="decimal" id="r_p1_in" class="in-input" data-prev="r_p1_ft" placeholder="0"><span>in</span></div>
+                    </div>
+                    <div class="input-group">
+                        <label data-i18n="p2">Side P2</label>
+                        <div class="input-wrapper"><input type="number" inputmode="decimal" id="r_p2_ft" class="ft-input" data-next="r_p2_in" placeholder="0"><span>ft</span></div>
+                        <div class="input-wrapper"><input type="number" inputmode="decimal" id="r_p2_in" class="in-input" data-prev="r_p2_ft" placeholder="0"><span>in</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODULE 2: TRIANGLE -->
+        <div id="mod-tri" class="module">
+            <div class="card">
+                <div class="card-title"><span data-i18n="triangle_dim">Triangle Dimensions</span></div>
+                <div class="input-row">
+                    <div class="input-group">
+                        <label data-i18n="base">Base</label>
+                        <div class="input-wrapper"><input type="number" inputmode="decimal" id="t_b_ft" class="ft-input" data-next="t_b_in" placeholder="0"><span>ft</span></div>
+                        <div class="input-wrapper"><input type="number" inputmode="decimal" id="t_b_in" class="in-input" data-prev="t_b_ft" placeholder="0"><span>in</span></div>
+                    </div>
+                    <div class="input-group">
+                        <label data-i18n="height">Height</label>
+                        <div class="input-wrapper"><input type="number" inputmode="decimal" id="t_h_ft" class="ft-input" data-next="t_h_in" placeholder="0"><span>ft</span></div>
+                        <div class="input-wrapper"><input type="number" inputmode="decimal" id="t_h_in" class="in-input" data-prev="t_h_ft" placeholder="0"><span>in</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODULE 3: CIRCLE -->
+        <div id="mod-circ" class="module">
+            <div class="card">
+                <div class="toggle-group">
+                    <div class="toggle-btn active" onclick="setCircleMode('radius', this)" data-i18n="radius">Radius</div>
+                    <div class="toggle-btn" onclick="setCircleMode('diameter', this)" data-i18n="diameter">Diameter</div>
+                </div>
+                <div class="input-row" style="justify-content:center;">
+                    <div class="input-group" style="max-width:200px;">
+                        <label id="lbl_circ_mode" data-i18n="radius">Radius</label>
+                        <div class="input-wrapper"><input type="number" inputmode="decimal" id="c_ft" class="ft-input" data-next="c_in" placeholder="0"><span>ft</span></div>
+                        <div class="input-wrapper"><input type="number" inputmode="decimal" id="c_in" class="in-input" data-prev="c_ft" placeholder="0"><span>in</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODULE 4: SEGMENT -->
+        <div id="mod-seg" class="module">
+            <div class="card">
+                <div class="toggle-group">
+                    <div class="toggle-btn active" onclick="setSegMode('chord', this)" data-i18n="rad_chord">Rad + Chord</div>
+                    <div class="toggle-btn" onclick="setSegMode('angle', this)" data-i18n="rad_angle">Rad + Angle</div>
+                </div>
+                <div class="input-row">
+                    <div class="input-group">
+                        <label data-i18n="radius">Radius</label>
+                        <div class="input-wrapper"><input type="number" inputmode="decimal" id="s_r_ft" class="ft-input" data-next="s_r_in" placeholder="0"><span>ft</span></div>
+                        <div class="input-wrapper"><input type="number" inputmode="decimal" id="s_r_in" class="in-input" data-prev="s_r_ft" placeholder="0"><span>in</span></div>
+                    </div>
+                    <div class="input-group" id="seg_chord_grp">
+                        <label data-i18n="chord">Chord</label>
+                        <div class="input-wrapper"><input type="number" inputmode="decimal" id="s_c_ft" class="ft-input" data-next="s_c_in" placeholder="0"><span>ft</span></div>
+                        <div class="input-wrapper"><input type="number" inputmode="decimal" id="s_c_in" class="in-input" data-prev="s_c_ft" placeholder="0"><span>in</span></div>
+                    </div>
+                    <div class="input-group" id="seg_angle_grp" style="display:none;">
+                        <label data-i18n="angle">Angle (Deg)</label>
+                        <div class="input-wrapper"><input type="number" inputmode="decimal" id="s_a" placeholder="0"><span>°</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODULE 5: CONVERTER -->
+        <div id="mod-conv" class="module">
+            <div class="card">
+                <div class="card-title"><span data-i18n="unit_conv">Unit Converter</span></div>
+                <select id="conv_type" class="conv-select" onchange="calcConverter()">
+                    <option value="ft_in">Feet ↔ Inch</option>
+                    <option value="ftin_dec">Feet & Inch ↔ Decimal Feet</option>
+                    <option value="ft_m">Feet ↔ Meter</option>
+                    <option value="ft_cm">Feet ↔ Centimeter</option>
+                    <option value="sqft_sqm">Sq.ft ↔ Sq.m</option>
+                    <option value="sqft_acre">Sq.ft ↔ Acre</option>
+                    <option value="sqft_dec">Sq.ft ↔ Decimal</option>
+                    <option value="sqft_katha">Sq.ft ↔ Katha</option>
+                    <option value="sqft_bigha">Sq.ft ↔ Bigha</option>
+                    <option value="sqft_hec">Sq.ft ↔ Hectare</option>
+                    <option value="dec_katha">Decimal ↔ Katha</option>
+                    <option value="dec_acre">Decimal ↔ Acre</option>
+                    <option value="bigha_katha">Bigha ↔ Katha</option>
+                </select>
+
+                <div class="input-row" id="conv_inputs_standard">
+                    <div class="input-group">
+                        <label id="lbl_conv_1">Value 1</label>
+                        <div class="input-wrapper"><input type="number" inputmode="decimal" id="cv_1" oninput="doConv(1)" placeholder="0"></div>
+                    </div>
+                    <div class="input-group">
+                        <label id="lbl_conv_2">Value 2</label>
+                        <div class="input-wrapper"><input type="number" inputmode="decimal" id="cv_2" oninput="doConv(2)" placeholder="0"></div>
+                    </div>
+                </div>
+
+                <div class="input-row" id="conv_inputs_complex" style="display:none;">
+                     <div class="input-group">
+                        <label>Feet</label>
+                        <div class="input-wrapper"><input type="number" inputmode="decimal" id="cv_c_ft" class="ft-input" data-next="cv_c_in" oninput="doConvComplex(1)" placeholder="0"><span>ft</span></div>
+                    </div>
+                    <div class="input-group">
+                        <label>Inch</label>
+                        <div class="input-wrapper"><input type="number" inputmode="decimal" id="cv_c_in" class="in-input" data-prev="cv_c_ft" oninput="doConvComplex(1)" placeholder="0"><span>in</span></div>
+                    </div>
+                    <div class="input-group">
+                        <label>Decimal Feet</label>
+                        <div class="input-wrapper"><input type="number" inputmode="decimal" id="cv_c_dec" oninput="doConvComplex(2)" placeholder="0"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- GLOBAL RESULTS CARD (Hidden for Converter) -->
+        <div id="result-section" class="card result-card">
+            <div class="result-main">
+                <p data-i18n="res_area">Total Area (Sq.Ft)</p>
+                <h2 id="res_sqft">0.00</h2>
+                <div id="extra_info" style="font-size:12px; color:var(--text-muted); margin-top:5px; display:none;"></div>
+            </div>
+            <div class="result-grid">
+                <div class="result-item"><span class="label" data-i18n="res_dec">Decimal (Shotok)</span><span class="val" id="res_dec">0.00</span></div>
+                <div class="result-item"><span class="label" data-i18n="res_katha">Katha</span><span class="val" id="res_katha">0.00</span></div>
+                <div class="result-item"><span class="label" data-i18n="res_bigha">Bigha</span><span class="val" id="res_bigha">0.00</span></div>
+                <div class="result-item"><span class="label" data-i18n="res_acre">Acre</span><span class="val" id="res_acre">0.000</span></div>
+                <div class="result-item"><span class="label" data-i18n="res_hec">Hectare</span><span class="val" id="res_hec">0.0000</span></div>
+                <div class="result-item"><span class="label" data-i18n="res_sqm">Sq. Meter</span><span class="val" id="res_sqm">0.00</span></div>
+            </div>
+            <div class="action-row">
+                <button class="btn btn-outline" onclick="clearCurrent()"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> <span data-i18n="btn_clear">Clear</span></button>
+                <button class="btn btn-primary" onclick="copyResult()"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M16 1H4C2.9 1 2 1.9 2 3v14h2V3h12V1zm3 4H8C6.9 5 6 5.9 6 7v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg> <span data-i18n="btn_copy">Copy</span></button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- FLOATING TOOLS -->
+    <div class="fab-container">
+        <div class="fab-menu">
+            <button class="fab-sub" onclick="openHistory()" title="History"><svg viewBox="0 0 24 24"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg></button>
+            <button class="fab-sub" onclick="shareResult()" title="Share"><svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92z"/></svg></button>
+            <button class="fab-sub" onclick="window.print()" title="Print/PDF"><svg viewBox="0 0 24 24"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></svg></button>
+        </div>
+        <button class="fab">
+            <svg viewBox="0 0 24 24"><path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.5 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z"/></svg>
+        </button>
+    </div>
+
+    <!-- CREDITS FOOTER -->
+    <footer class="dev-footer">
+        <p>Developed with ❤️ by <span class="highlight">akbarverse</span></p>
+        <p>Support / Donate (UPI): 
+            <span class="upi-box" onclick="copyUPI()">
+                akbarverse@ptaxis 
+                <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+            </span>
+        </p>
+    </footer>
+
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="modal-settings" onclick="closeModal(event, 'modal-settings')">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 data-i18n="settings">Settings</h2>
+            <button class="icon-btn" onclick="closeModalForce('modal-settings')"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+        </div>
+        
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <span data-i18n="theme">Theme (Dark/Light)</span>
+                <div class="toggle-group" style="margin:0; width:120px;">
+                    <div class="toggle-btn active" id="btn-theme-dark" onclick="setTheme('dark')">Dark</div>
+                    <div class="toggle-btn" id="btn-theme-light" onclick="setTheme('light')">Light</div>
+                </div>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <span data-i18n="language">Language</span>
+                <div class="toggle-group" style="margin:0; width:120px;">
+                    <div class="toggle-btn active" id="btn-lang-en" onclick="setLang('en')">EN</div>
+                    <div class="toggle-btn" id="btn-lang-bn" onclick="setLang('bn')">বাংলা</div>
+                </div>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <span data-i18n="wb_standard">WB Land Standard</span><br>
+                    <small style="color:var(--text-muted); font-size:11px;">1 Katha = 720 Sq.Ft</small>
+                </div>
+                <div class="toggle-group" style="margin:0; width:120px;">
+                    <div class="toggle-btn active">ON</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- HISTORY MODAL -->
+<div class="modal-overlay" id="modal-history" onclick="closeModal(event, 'modal-history')">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 data-i18n="history">History</h2>
+            <div style="display:flex; gap:10px;">
+                <button class="icon-btn" onclick="clearHistory()" title="Clear All"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
+                <button class="icon-btn" onclick="closeModalForce('modal-history')"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+            </div>
+        </div>
+        <div class="card" id="history-list">
+            <!-- Populated via JS -->
+            <p style="text-align:center; color:var(--text-muted);" data-i18n="no_history">No recent calculations.</p>
+        </div>
+    </div>
+</div>
+
+<div id="toast" class="toast">Copied!</div>
+
+<script>
+    /* === GLOBAL STATE === */
+    let currentModule = 'rect';
+    let circMode = 'radius';
+    let segMode = 'chord';
+    let currentAreaSqFt = 0;
+    let autoSaveTimer = null;
+
+    /* === SMART INPUT: 3-Digit Auto Switch & Inch Conversion === */
+    document.querySelectorAll('.ft-input').forEach(input => {
+        input.addEventListener('input', function(e) {
+            // Remove non-numeric characters (keep decimals if user pastes, but mostly numeric)
+            this.value = this.value.replace(/[^0-9.]/g, '');
+            
+            // Limit to 3 digits unless backspacing
+            if (this.value.includes('.')) return; // Don't auto-switch if they are typing decimals
+            
+            let valStr = this.value;
+            // The requirement: "in ft section i cann add 3 digits then automatic switch to next"
+            if (valStr.length === 3 && e.inputType !== 'deleteContentBackward') {
+                let nextId = this.dataset.next;
+                if(nextId) document.getElementById(nextId).focus();
+            }
+            triggerCalc();
+        });
+    });
+
+    document.querySelectorAll('.in-input').forEach(input => {
+        input.addEventListener('input', function(e) {
+            this.value = this.value.replace(/[^0-9.]/g, '');
+            let val = parseFloat(this.value);
+            
+            // "If inch becomes 12 or more automatically convert into feet"
+            if (!isNaN(val) && val >= 12) {
+                let prevId = this.dataset.prev;
+                let ftInput = document.getElementById(prevId);
+                if(ftInput) {
+                    let currentFt = parseInt(ftInput.value || 0);
+                    let extraFt = Math.floor(val / 12);
+                    let remIn = val % 12;
+                    
+                    ftInput.value = currentFt + extraFt;
+                    this.value = remIn === 0 ? '' : remIn;
+                }
+            }
+            triggerCalc();
+        });
+    });
+
+    // Converter specific normal inputs
+    document.querySelectorAll('input:not(.ft-input):not(.in-input)').forEach(input => {
+        input.addEventListener('input', triggerCalc);
+    });
+
+    /* === CORE MATH & LOGIC === */
+    function parseDim(ftId, inId) {
+        let ft = parseFloat(document.getElementById(ftId).value || 0);
+        let inch = parseFloat(document.getElementById(inId).value || 0);
+        return ft + (inch / 12);
+    }
+
+    function triggerCalc() {
+        if(currentModule === 'rect') calcRect();
+        else if(currentModule === 'tri') calcTri();
+        else if(currentModule === 'circ') calcCirc();
+        else if(currentModule === 'seg') calcSeg();
+        // Converter handles its own live update via inline oninput
+        
+        // Auto Save trigger
+        if(currentAreaSqFt > 0 && currentModule !== 'conv') {
+            clearTimeout(autoSaveTimer);
+            autoSaveTimer = setTimeout(() => saveHistory(), 2000);
+        }
+    }
+
+    function calcRect() {
+        let d1 = parseDim('r_d1_ft', 'r_d1_in');
+        let d2 = parseDim('r_d2_ft', 'r_d2_in');
+        let p1 = parseDim('r_p1_ft', 'r_p1_in');
+        let p2 = parseDim('r_p2_ft', 'r_p2_in');
+        
+        let avgD = (d1 + d2) / 2;
+        let avgP = (p1 + p2) / 2;
+        let area = avgD * avgP;
+        
+        if (area > 0) {
+            document.getElementById('extra_info').style.display = 'block';
+            document.getElementById('extra_info').innerText = `Avg L: ${fmt(avgD)} ft | Avg W: ${fmt(avgP)} ft`;
+        } else {
+            document.getElementById('extra_info').style.display = 'none';
+        }
+        updateResults(area);
+    }
+
+    function calcTri() {
+        let b = parseDim('t_b_ft', 't_b_in');
+        let h = parseDim('t_h_ft', 't_h_in');
+        let area = 0.5 * b * h;
+        document.getElementById('extra_info').style.display = 'none';
+        updateResults(area);
+    }
+
+    function calcCirc() {
+        let r_val = parseDim('c_ft', 'c_in');
+        let r = circMode === 'diameter' ? r_val / 2 : r_val;
+        let area = Math.PI * r * r;
+        let circ = 2 * Math.PI * r;
+        
+        if (area > 0) {
+            document.getElementById('extra_info').style.display = 'block';
+            document.getElementById('extra_info').innerText = `Circumference: ${fmt(circ)} ft`;
+        } else {
+            document.getElementById('extra_info').style.display = 'none';
+        }
+        updateResults(area);
+    }
+
+    function calcSeg() {
+        let r = parseDim('s_r_ft', 's_r_in');
+        let area = 0;
+        if(r <= 0) { updateResults(0); return; }
+
+        if(segMode === 'chord') {
+            let c = parseDim('s_c_ft', 's_c_in');
+            if (c > 0 && c <= 2*r) {
+                let theta = 2 * Math.asin(c / (2*r)); // radians
+                area = 0.5 * r * r * (theta - Math.sin(theta));
+            }
+        } else {
+            let deg = parseFloat(document.getElementById('s_a').value || 0);
+            if(deg > 0 && deg <= 360) {
+                let theta = deg * (Math.PI / 180);
+                area = 0.5 * r * r * (theta - Math.sin(theta));
+            }
+        }
+        document.getElementById('extra_info').style.display = 'none';
+        updateResults(area);
+    }
+
+    /* === UNIT CONVERSIONS (WB STANDARD) === */
+    const CONST = {
+        SQM: 0.092903,
+        DECIMAL: 435.6,
+        KATHA: 720,
+        BIGHA: 14400,
+        ACRE: 43560,
+        HECTARE: 107639
+    };
+
+    function updateResults(sqft) {
+        currentAreaSqFt = sqft;
+        document.getElementById('res_sqft').innerText = fmt(sqft, 2);
+        document.getElementById('res_sqm').innerText = fmt(sqft * CONST.SQM, 2);
+        document.getElementById('res_dec').innerText = fmt(sqft / CONST.DECIMAL, 2);
+        document.getElementById('res_katha').innerText = fmt(sqft / CONST.KATHA, 2);
+        document.getElementById('res_bigha').innerText = fmt(sqft / CONST.BIGHA, 3);
+        document.getElementById('res_acre').innerText = fmt(sqft / CONST.ACRE, 3);
+        document.getElementById('res_hec').innerText = fmt(sqft / CONST.HECTARE, 4);
+    }
+
+    function fmt(num, dec = 2) {
+        if(isNaN(num) || num === 0) return "0.00";
+        return Number(num).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+    }
+
+    /* === CONVERTER MODULE === */
+    function calcConverter() {
+        let type = document.getElementById('conv_type').value;
+        let std = document.getElementById('conv_inputs_standard');
+        let cpx = document.getElementById('conv_inputs_complex');
+        let l1 = document.getElementById('lbl_conv_1');
+        let l2 = document.getElementById('lbl_conv_2');
+        
+        let v1 = document.getElementById('cv_1');
+        let v2 = document.getElementById('cv_2');
+        v1.value = ''; v2.value = '';
+
+        if(type === 'ftin_dec') {
+            std.style.display = 'none';
+            cpx.style.display = 'flex';
+        } else {
+            std.style.display = 'flex';
+            cpx.style.display = 'none';
+            let parts = type.split('_');
+            l1.innerText = formatUnitName(parts[0]);
+            l2.innerText = formatUnitName(parts[1]);
+        }
+    }
+
+    function doConv(source) {
+        let type = document.getElementById('conv_type').value;
+        let v1 = document.getElementById('cv_1');
+        let v2 = document.getElementById('cv_2');
+        let val1 = parseFloat(v1.value);
+        let val2 = parseFloat(v2.value);
+        
+        if(source === 1 && isNaN(val1)) { v2.value = ''; return; }
+        if(source === 2 && isNaN(val2)) { v1.value = ''; return; }
+
+        let multiplier = 1;
+        switch(type) {
+            case 'ft_in': multiplier = 12; break;
+            case 'ft_m': multiplier = 0.3048; break;
+            case 'ft_cm': multiplier = 30.48; break;
+            case 'sqft_sqm': multiplier = CONST.SQM; break;
+            case 'sqft_acre': multiplier = 1/CONST.ACRE; break;
+            case 'sqft_dec': multiplier = 1/CONST.DECIMAL; break;
+            case 'sqft_katha': multiplier = 1/CONST.KATHA; break;
+            case 'sqft_bigha': multiplier = 1/CONST.BIGHA; break;
+            case 'sqft_hec': multiplier = 1/CONST.HECTARE; break;
+            case 'dec_katha': multiplier = CONST.DECIMAL/CONST.KATHA; break;
+            case 'dec_acre': multiplier = 1/100; break;
+            case 'bigha_katha': multiplier = 20; break;
+        }
+
+        if(source === 1) v2.value = (val1 * multiplier).toFixed(4).replace(/\.0000$/, '');
+        else v1.value = (val2 / multiplier).toFixed(4).replace(/\.0000$/, '');
+    }
+
+    function doConvComplex(source) {
+        let ftInp = document.getElementById('cv_c_ft');
+        let inInp = document.getElementById('cv_c_in');
+        let decInp = document.getElementById('cv_c_dec');
+        
+        if (source === 1) {
+            let f = parseFloat(ftInp.value || 0);
+            let i = parseFloat(inInp.value || 0);
+            let d = f + (i/12);
+            if(f===0 && i===0) decInp.value = '';
+            else decInp.value = d.toFixed(4);
+        } else {
+            let d = parseFloat(decInp.value);
+            if(isNaN(d)) { ftInp.value = ''; inInp.value = ''; return; }
+            let f = Math.floor(d);
+            let i = (d - f) * 12;
+            ftInp.value = f;
+            inInp.value = i.toFixed(2).replace(/\.00$/, '');
+        }
+    }
+
+    function formatUnitName(u) {
+        const names = { ft: "Feet", in: "Inch", m: "Meter", cm: "Centimeter", sqft: "Sq.Ft", sqm: "Sq.M", acre: "Acre", dec: "Decimal", katha: "Katha", bigha: "Bigha", hec: "Hectare" };
+        return names[u] || u;
+    }
+
+    /* === UI & INTERACTIONS === */
+    function switchModule(mod, el) {
+        currentModule = mod;
+        document.querySelectorAll('.module').forEach(m => m.classList.remove('active'));
+        document.getElementById('mod-' + mod).classList.add('active');
+        
+        document.querySelectorAll('.nav-pill').forEach(p => p.classList.remove('active'));
+        el.classList.add('active');
+        
+        let rs = document.getElementById('result-section');
+        if(mod === 'conv') {
+            rs.style.display = 'none';
+            calcConverter();
+        } else {
+            rs.style.display = 'block';
+            triggerCalc();
+        }
+    }
+
+    function setCircleMode(mode, el) {
+        circMode = mode;
+        Array.from(el.parentElement.children).forEach(c => c.classList.remove('active'));
+        el.classList.add('active');
+        document.getElementById('lbl_circ_mode').innerText = mode === 'radius' ? getStr('radius') : getStr('diameter');
+        triggerCalc();
+    }
+
+    function setSegMode(mode, el) {
+        segMode = mode;
+        Array.from(el.parentElement.children).forEach(c => c.classList.remove('active'));
+        el.classList.add('active');
+        
+        if(mode === 'chord') {
+            document.getElementById('seg_chord_grp').style.display = 'flex';
+            document.getElementById('seg_angle_grp').style.display = 'none';
+        } else {
+            document.getElementById('seg_chord_grp').style.display = 'none';
+            document.getElementById('seg_angle_grp').style.display = 'flex';
+        }
+        triggerCalc();
+    }
+
+    function clearCurrent() {
+        let activeMod = document.getElementById('mod-' + currentModule);
+        activeMod.querySelectorAll('input').forEach(inp => inp.value = '');
+        triggerCalc();
+        showToast(getStr('cleared'));
+    }
+
+    function showToast(msg) {
+        let t = document.getElementById('toast');
+        t.innerText = msg;
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 2000);
+    }
+
+    /* === TOOLS (Copy, Share, Save) === */
+    function getResultString() {
+        let sqft = document.getElementById('res_sqft').innerText;
+        let dec = document.getElementById('res_dec').innerText;
+        let katha = document.getElementById('res_katha').innerText;
+        let bigha = document.getElementById('res_bigha').innerText;
+        return `Land Measure Pro Result:\nArea: ${sqft} Sq.Ft\nDecimal: ${dec}\nKatha: ${katha}\nBigha: ${bigha}`;
+    }
+
+    function copyResult() {
+        if(currentAreaSqFt === 0) return;
+        let text = getResultString();
+        navigator.clipboard.writeText(text).then(() => showToast(getStr('copied')));
+    }
+
+    function copyUPI() {
+        navigator.clipboard.writeText("akbarverse@ptaxis").then(() => showToast("UPI ID Copied!"));
+    }
+
+    function shareResult() {
+        if(currentAreaSqFt === 0) return;
+        if (navigator.share) {
+            navigator.share({
+                title: 'Land Measure Pro',
+                text: getResultString()
+            }).catch(console.error);
+        } else {
+            copyResult();
+        }
+    }
+
+    function saveHistory() {
+        if(currentAreaSqFt === 0) return;
+        let history = JSON.parse(localStorage.getItem('landHistory') || '[]');
+        let title = currentModule.charAt(0).toUpperCase() + currentModule.slice(1) + " Calc";
+        let date = new Date().toLocaleString();
+        
+        let item = { id: Date.now(), title, date, sqft: currentAreaSqFt };
+        history.unshift(item);
+        if(history.length > 20) history.pop();
+        localStorage.setItem('landHistory', JSON.stringify(history));
+        renderHistory();
+    }
+
+    function renderHistory() {
+        let history = JSON.parse(localStorage.getItem('landHistory') || '[]');
+        let list = document.getElementById('history-list');
+        if(history.length === 0) {
+            list.innerHTML = `<p style="text-align:center; color:var(--text-muted);" data-i18n="no_history">${getStr('no_history')}</p>`;
+            return;
+        }
+        
+        list.innerHTML = history.map(h => `
+            <div class="history-item">
+                <div class="history-title">${h.title} - ${fmt(h.sqft)} Sq.Ft</div>
+                <div class="history-detail">${h.date}</div>
+            </div>
+        `).join('');
+    }
+
+    /* === MODALS === */
+    function openSettings() { document.getElementById('modal-settings').classList.add('active'); }
+    function openHistory() { renderHistory(); document.getElementById('modal-history').classList.add('active'); }
+    function closeModal(e, id) { if(e.target.id === id) document.getElementById(id).classList.remove('active'); }
+    function closeModalForce(id) { document.getElementById(id).classList.remove('active'); }
+
+    /* === SETTINGS (Theme & Lang) === */
+    let lang = 'en';
+    const dict = {
+        app_title: { en: "Land Measure Pro", bn: "ভূমি পরিমাপ প্রো" },
+        nav_rect: { en: "Rectangle", bn: "আয়তক্ষেত্র" },
+        nav_tri: { en: "Triangle", bn: "ত্রিভুজ" },
+        nav_circ: { en: "Circle", bn: "বৃত্ত" },
+        nav_seg: { en: "Segment", bn: "বৃত্তাংশ" },
+        nav_conv: { en: "Converter", bn: "কনভার্টার" },
+        side_length: { en: "Lengths (Opposite Sides)", bn: "দৈর্ঘ্য (বিপরীত দিক)" },
+        side_width: { en: "Widths (Opposite Sides)", bn: "প্রস্থ (বিপরীত দিক)" },
+        d1: { en: "Side D1", bn: "দিক D1" },
+        d2: { en: "Side D2", bn: "দিক D2" },
+        p1: { en: "Side P1", bn: "দিক P1" },
+        p2: { en: "Side P2", bn: "দিক P2" },
+        triangle_dim: { en: "Triangle Dimensions", bn: "ত্রিভুজের মাত্রা" },
+        base: { en: "Base", bn: "ভূমি" },
+        height: { en: "Height", bn: "উচ্চতা" },
+        radius: { en: "Radius", bn: "ব্যাসার্ধ" },
+        diameter: { en: "Diameter", bn: "ব্যাস" },
+        rad_chord: { en: "Rad + Chord", bn: "ব্যাসার্ধ + জ্যা" },
+        rad_angle: { en: "Rad + Angle", bn: "ব্যাসার্ধ + কোণ" },
+        chord: { en: "Chord", bn: "জ্যা" },
+        angle: { en: "Angle (Deg)", bn: "কোণ (ডিগ্রি)" },
+        unit_conv: { en: "Unit Converter", bn: "একক রূপান্তর" },
+        res_area: { en: "Total Area (Sq.Ft)", bn: "মোট ক্ষেত্রফল (বর্গফুট)" },
+        res_dec: { en: "Decimal (Shotok)", bn: "শতক (ডেসিমেল)" },
+        res_katha: { en: "Katha", bn: "কাঠা" },
+        res_bigha: { en: "Bigha", bn: "বিঘা" },
+        res_acre: { en: "Acre", bn: "একর" },
+        res_hec: { en: "Hectare", bn: "হেক্টর" },
+        res_sqm: { en: "Sq. Meter", bn: "বর্গমিটার" },
+        btn_clear: { en: "Clear", bn: "মুছুন" },
+        btn_copy: { en: "Copy", bn: "কপি" },
+        settings: { en: "Settings", bn: "সেটিংস" },
+        theme: { en: "Theme (Dark/Light)", bn: "থিম (ডার্ক/লাইট)" },
+        language: { en: "Language", bn: "ভাষা" },
+        wb_standard: { en: "WB Land Standard", bn: "পশ্চিমবঙ্গ ভূমি মান" },
+        history: { en: "History", bn: "ইতিহাস" },
+        no_history: { en: "No recent calculations.", bn: "কোন সাম্প্রতিক হিসাব নেই।" },
+        copied: { en: "Copied to clipboard!", bn: "কপি করা হয়েছে!" },
+        cleared: { en: "Cleared!", bn: "পরিষ্কার করা হয়েছে!" }
+    };
+
+    function getStr(key) { return dict[key] ? dict[key][lang] : key; }
+
+    function setLang(l) {
+        lang = l;
+        document.getElementById('btn-lang-en').classList.toggle('active', l==='en');
+        document.getElementById('btn-lang-bn').classList.toggle('active', l==='bn');
+        
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            let key = el.getAttribute('data-i18n');
+            if(dict[key]) {
+                // If element has SVG icon inside, preserve it
+                let svg = el.querySelector('svg');
+                if(svg) {
+                    el.innerHTML = '';
+                    el.appendChild(svg);
+                    el.appendChild(document.createTextNode(' ' + dict[key][lang]));
+                } else {
+                    el.innerText = dict[key][lang];
+                }
+            }
+        });
+        localStorage.setItem('landLang', l);
+    }
+
+    function setTheme(t) {
+        document.getElementById('btn-theme-dark').classList.toggle('active', t==='dark');
+        document.getElementById('btn-theme-light').classList.toggle('active', t==='light');
+        if(t === 'light') document.body.classList.add('light-mode');
+        else document.body.classList.remove('light-mode');
+        localStorage.setItem('landTheme', t);
+    }
+
+    function clearHistory() {
+        localStorage.removeItem('landHistory');
+        renderHistory();
+        showToast(getStr('cleared'));
+    }
+
+    // Init App
+    window.onload = () => {
+        let savedTheme = localStorage.getItem('landTheme') || 'dark';
+        setTheme(savedTheme);
+        
+        let savedLang = localStorage.getItem('landLang') || 'en';
+        setLang(savedLang);
+        
+        calcConverter(); // Init converter labels
+    };
+
+</script>
+</body>
+</html>
+
+
